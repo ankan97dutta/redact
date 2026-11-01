@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://redact.local/schemas/verification-report.schema.json",
+  "title": "VerificationReport",
+  "type": "object",
+  "required": ["id", "document_id", "outcome", "checks", "engine_versions", "created_at"],
+  "additionalProperties": false,
+  "properties": {
+    "id": { "type": "string" },
+    "document_id": { "type": "string" },
+    "outcome": {
+      "type": "string",
+      "enum": ["verified", "failed", "inconclusive"],
+      "description": "Must not be verified if any required check failed, errored, or was incompletely skipped"
+    },
+    "checks": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/check_result" }
+    },
+    "engine_versions": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "created_at": { "type": "string", "format": "date-time" }
+  },
+  "$defs": {
+    "check_result": {
+      "type": "object",
+      "required": ["name", "status"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "status": {
+          "type": "string",
+          "enum": ["pass", "fail", "skip", "error"]
+        },
+        "detail": { "type": "string" }
+      }
+    }
+  }
+}

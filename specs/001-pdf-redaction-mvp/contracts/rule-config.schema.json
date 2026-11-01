@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://redact.local/schemas/rule-config.schema.json",
+  "title": "RedactRuleConfiguration",
+  "type": "object",
+  "required": ["version", "builtin_toggles", "custom_rules"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Rule config schema version (semver)",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "builtin_toggles": {
+      "type": "object",
+      "description": "Map of built-in rule id → enabled",
+      "additionalProperties": { "type": "boolean" }
+    },
+    "custom_rules": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/custom_rule" }
+    }
+  },
+  "$defs": {
+    "custom_rule": {
+      "type": "object",
+      "required": ["id", "name", "kind", "pattern", "category", "enabled"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "kind": {
+          "type": "string",
+          "enum": ["regex", "keyword", "phrase", "validation"]
+        },
+        "pattern": { "type": "string" },
+        "category": { "type": "string" },
+        "enabled": { "type": "boolean" },
+        "flags": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    }
+  }
+}
