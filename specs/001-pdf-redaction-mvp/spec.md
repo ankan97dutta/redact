@@ -136,6 +136,8 @@ A user completes detection, review, redaction, and verification with network dis
 - Very large PDFs or large batches: UI remains responsive enough to cancel; failures surface per document.
 - Forms, tables, and embedded images containing sensitive content: where permanent removal cannot be guaranteed for a selected region, export MUST fail safely for that guarantee path (failed/inconclusive), not claim verified secure redaction.
 - Visual-only overlay path: MUST NOT be offered or labeled as secure/permanent redaction.
+- Required image/vector verification checks skipped or incomplete: export outcome is `inconclusive`, never `verified`.
+- PDF constructs outside secure redaction capability: warn with reason; export allowed but never `verified` (only `failed` or `inconclusive`).
 
 ## Requirements *(mandatory)*
 
@@ -146,7 +148,8 @@ A user completes detection, review, redaction, and verification with network dis
 - **FR-001**: Users MUST be able to import a single PDF into a workspace.
 - **FR-002**: Users MUST be able to import multiple PDFs into the same workspace (batch).
 - **FR-003**: The system MUST show per-document processing status (at least: imported, analyzing, ready for review, approved for export, exporting, verified, failed, inconclusive, unsupported).
-- **FR-004**: The system MUST accept text PDFs, scanned PDFs, mixed PDFs, and encrypted PDFs (with user-supplied credentials), including documents that contain tables, forms, and embedded images, within declared capability limits.
+- **FR-004**: The system MUST accept text PDFs, scanned PDFs, mixed PDFs, and encrypted PDFs (with user-supplied credentials), including documents that contain tables, forms, and embedded images, within declared capability limits. When analysis detects constructs the redaction engine cannot securely process, the system MUST warn the user with a clear capability reason; the user MAY continue review and MAY export, but the export MUST NOT receive a `verified` outcome (only `failed` or `inconclusive` as appropriate)—never silent under-redaction presented as success.
+- **FR-004a**: The system MUST expose a user-visible, versioned **Capabilities** summary (engine and verification check versions; supported vs limited document classes and check coverage) accessible in-app (e.g., About/Diagnostics), and MUST keep it consistent with the limits used for per-document warnings and verification labeling.
 - **FR-005**: The system MUST handle invalid, corrupted, and unsupported documents with explicit status and reason without crashing the workspace or blocking unrelated documents.
 
 #### PDF viewer
@@ -180,15 +183,16 @@ A user completes detection, review, redaction, and verification with network dis
 - **FR-026**: Users MUST be able to reject false positives.
 - **FR-027**: Users MUST be able to manually add redaction regions that enter the same approval flow.
 - **FR-028**: The system MUST require explicit user review/approval before applying permanent redactions to an export.
+- **FR-028a**: The system MUST block export when the approval set is empty (zero approved detections and zero approved manual regions) and MUST show a clear message explaining that at least one approved region is required.
 
 #### Redaction and export
 
 - **FR-029**: The system MUST support text-based and area-based redaction targets.
 - **FR-030**: Permanent redaction MUST remove or irreversibly destroy underlying sensitive content (text, images, and vector content in scope for the approved regions)—not merely cover it visually.
 - **FR-031**: Exports MUST be written as new output files; originals MUST remain unmodified.
-- **FR-032**: Before presenting a completed export, the system MUST sanitize relevant metadata and hidden document information according to the product’s sanitization policy for that job.
+- **FR-032**: Before presenting a completed export, the system MUST run the MVP default sanitization policy: remove common document info metadata fields (e.g., title, author, subject, keywords, creator/producer dates where applicable), remove catalog XMP `/Metadata` streams, remove document JavaScript/actions carriers, and remove embedded-file name-tree entries when present. Page-content removal remains the redaction step’s responsibility. Sanitization failure MUST prevent a `verified` outcome.
 - **FR-033**: The product MUST NEVER claim secure/permanent redaction for a visual overlay alone.
-- **FR-034**: When secure redaction cannot be guaranteed for the approved set, the system MUST fail safely (failed or inconclusive)—not mark the export verified/successful.
+- **FR-034**: When secure redaction cannot be guaranteed for the approved set (including unsupported PDF constructs for permanent redaction), the system MUST fail safely with `failed` or `inconclusive`—not mark the export `verified`/successful. Export MAY still be attempted so the user receives an artifact and report, but labeling MUST remain honest.
 
 #### Batch processing
 
@@ -211,11 +215,11 @@ A user completes detection, review, redaction, and verification with network dis
 #### Verification and reporting
 
 - **FR-043**: The system MUST verify that redacted text targeted by approved redactions is no longer extractable from the export by the product’s verification checks.
-- **FR-044**: Verification MUST include relevant checks for image and vector content tied to approved regions, within declared capability.
-- **FR-045**: Verification MUST inspect metadata and relevant document structures for residual sensitive material covered by the sanitization/verification policy.
-- **FR-046**: The system MUST attempt to detect residual or recoverable sensitive content related to approved redactions and report findings.
+- **FR-044**: Verification MUST include relevant checks for image and vector content tied to approved regions, within declared capability. If required image or vector residual checks cannot be completed for an approved region (unsupported construct, engine limit, or check error/skip), the export outcome MUST be `inconclusive` (never `verified`); this is distinct from `failed`, which is used when checks complete and find residual content or other hard failures.
+- **FR-045**: Verification MUST inspect that MVP default sanitization targets (document info metadata, XMP `/Metadata`, JavaScript/actions, embedded-file name trees) were applied or report check failure/inconclusive per FR-048/FR-049.
+- **FR-046**: The system MUST attempt to detect residual or recoverable sensitive content related to approved redactions and report findings. Completed checks that find residue MUST yield `failed` (or contribute to `failed`). Incomplete/skipped required image or vector checks MUST yield `inconclusive` per FR-044, not `verified`.
 - **FR-047**: The system MUST generate a verification report for every exported document.
-- **FR-048**: Reports MUST distinguish verified, failed, and inconclusive outcomes with reasons.
+- **FR-048**: Reports MUST distinguish verified, failed, and inconclusive outcomes with reasons (including when inconclusiveness is due to incomplete image/vector verification coverage).
 - **FR-049**: Incomplete, skipped, or errored verification MUST NEVER be marked successful/verified.
 
 #### Security and privacy
@@ -250,6 +254,7 @@ A user completes detection, review, redaction, and verification with network dis
 - **Workspace**: An ephemeral local session containing one or more documents under review, shared rule configuration selection, and batch actions; not durable across restarts in MVP.
 - **Document**: A user-imported PDF reference (source path), processing status, unlock state, analysis artifacts, and export history references within the current session.
 - **Persisted Rule Configuration**: Locally stored rule enablement and custom rules that survive application restarts (distinct from ephemeral workspace documents).
+- **Capabilities Summary**: Versioned, user-visible description of what this build’s redaction/OCR/verification stack supports and limits (FR-004a).
 - **Detection**: A proposed sensitive match with rule/category, location (page + region), confidence, source (native/OCR), and review state (proposed/approved/rejected).
 - **Manual Region**: User-drawn area intended for redaction; follows the same approval rules as detections.
 - **Rule**: Built-in or custom detection definition; enablement flag; optional validation; portable via JSON rule configuration.
@@ -275,18 +280,21 @@ A user completes detection, review, redaction, and verification with network dis
 - **SC-010**: Rule JSON round-trip (export then import) restores enablement and custom rules with no manual re-entry for the tested configuration.
 - **SC-011**: After application restart, previously saved rule configuration remains available without re-import; previously open documents/detections/approvals are not required to reappear.
 - **SC-012**: In a batch export where at least one target filename already exists in the output folder, that document is reported as a file conflict (not verified), is not overwritten, and other non-conflicting documents can still complete independently.
+- **SC-013**: A tester can open the in-app Capabilities summary and identify engine/check version identifiers and at least one documented limitation without reading external project docs.
 
 ## Assumptions
 
 - Secure MVP prioritizes: document import, local detection (built-in patterns + toggles), review/approval, permanent redaction export, sanitization, verification reports, batch basics, offline operation, and original preservation.
 - Custom rule authoring and JSON import/export are in product scope; if delivery is phased, built-in toggles ship with the first secure export path and custom/JSON follow immediately after without changing security gates.
 - “Names” and “addresses” built-in detection are best-effort pattern/heuristic detectors; uncertain matches remain visible as uncertain and never auto-approved (FR-020).
-- Empty approval set: exporting with zero approved regions is blocked or requires an extra confirmation that no redactions will be applied (product should prefer block for MVP clarity).
+- Empty approval set: exporting with zero approved regions is **blocked** (FR-028a)—no “export with no redactions” confirmation path in MVP.
 - Platforms in scope are Windows and macOS desktop; mobile/web SaaS are out of scope.
 - Single local user per machine install; no multi-account profiles required for MVP.
 - Verification cannot claim absolute resistance to all forensic lab techniques; outcomes are limited to the product’s documented checks—copy MUST not overclaim (constitution-aligned).
 - Page reorder/rotate/delete operate on working/export preparation state only; originals remain immutable (FR-031, FR-041).
 - Highlights/annotations are out of MVP; if added later they never satisfy FR-030 alone.
+- MVP default sanitization (FR-032) is metadata + XMP + JavaScript/actions + embedded files; optional-content/hidden-layer catalog stripping is deferred unless a later clarification expands scope.
+- Capability warnings for unsupported constructs MUST be visible in UI and verification report reasons when they prevent `verified`.
 
 ## MVP vs Future Enhancements
 
@@ -301,6 +309,7 @@ A user completes detection, review, redaction, and verification with network dis
 - Batch apply rules, review, approved-only process, per-doc errors, retry, output directory, no original overwrite
 - Export name collisions: block conflicting file, report error, continue other documents
 - Persisted rule configurations; ephemeral document/session workspace
+- In-app versioned Capabilities summary (supported vs limited coverage)
 - Verification + report with verified/failed/inconclusive; never mark incomplete as success
 - Offline, no document telemetry, secure temp/password handling
 
@@ -316,8 +325,21 @@ A user completes detection, review, redaction, and verification with network dis
 
 ## Clarifications
 
+### Session 2026-11-02
+
+- Q: For a normal secure export, which hidden document data should Redact remove by default during sanitization? → A: Option B — Metadata + XMP + JavaScript/actions + embedded files (MVP default); page content handled by redaction.
+- Q: If the product cannot fully run image or vector residual checks for an approved region, what verification outcome should that export receive? → A: Option A — `inconclusive` (never `verified`); `failed` reserved for completed checks that find problems.
+- Q: When a PDF uses constructs the redaction engine cannot securely process, what should happen before export? → A: Option B — Allow export; outcome only `failed` or `inconclusive`, never `verified`, with a clear capability warning.
+- Q: If the user tries to export with zero approved detections and zero approved manual regions, what should Redact do? → A: Option A — Block export until at least one region is approved.
+- Q: Must the app show users a clear, versioned summary of what secure redaction and verification can and cannot cover in this build? → A: Option A — Yes; in-app versioned Capabilities summary (About/Diagnostics).
+
 ### Resolved
 
 - **Q1 (PDF utilities)**: Option B — Include page reorder, rotate, and delete in MVP; defer highlights/annotations (FR-042–FR-042c).
 - **Q2 (Persistence)**: Option C — Persist rule configurations only; document/session workspace is ephemeral across restarts (FR-055a, FR-055b, SC-011).
 - **Q3 (Export collisions)**: Option B — Block conflicting files, report conflict, continue other documents (FR-041a, SC-012).
+- **Q4 (Sanitization default)**: Option B — Metadata + XMP + JS/actions + embedded files (FR-032); OC/hidden-layer stripping deferred.
+- **Q5 (Incomplete image/vector verify)**: Option A — `inconclusive` when required image/vector checks cannot complete; never `verified` (FR-044, FR-046).
+- **Q6 (Unsupported constructs)**: Option B — Warn and allow export; never `verified` (FR-004, FR-034).
+- **Q7 (Empty approval set)**: Option A — Block export with clear message (FR-028a).
+- **Q8 (Capabilities summary)**: Option A — In-app versioned Capabilities summary (FR-004a, SC-013).
