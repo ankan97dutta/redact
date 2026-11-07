@@ -43,7 +43,7 @@ Per plan.md: `apps/desktop/` (Tauri + React), `crates/redact-*`, `tests/corpus|i
 - [ ] T008 Implement domain DTOs and enums (`DocumentStatus` including `imported|needs_password|analyzing|ready_for_review|reviewing|approved_for_export|exporting|verified|failed|inconclusive|unsupported|cancelled`, confidence `high|medium|low|uncertain`, review_state `proposed|approved|rejected`) in `crates/redact-domain/src/types.rs`
 - [ ] T009 [P] Implement `CanonicalRect` with validation `x1 > x0`, `y1 > y0` in `crates/redact-domain/src/geometry.rs` per `specs/001-pdf-redaction-mvp/contracts/coordinates.md`
 - [ ] T010 [P] Implement document lifecycle transition guards forbidding client-set `verified` except `exporting → verified` after verify success in `crates/redact-domain/src/lifecycle.rs`
-- [ ] T011 [P] Implement export eligibility gate (non-empty approval set; block empty export) in `crates/redact-domain/src/gates.rs`
+- [ ] T011 [P] Implement export eligibility gate for **FR-028a** (non-empty approval set; block empty export with clear message) in `crates/redact-domain/src/gates.rs`
 - [ ] T012 Write failing unit tests for lifecycle + eligibility in `crates/redact-domain/tests/lifecycle_gates.rs` (TDD)
 - [ ] T013 [P] Define `ExtractionEngine`, `RedactionEngine`, `SanitizeEngine` traits in `crates/redact-pdf/src/traits.rs`
 - [ ] T014 [P] Define `OcrEngine` trait returning text + boxes in `crates/redact-ocr/src/traits.rs`
@@ -60,43 +60,49 @@ Per plan.md: `apps/desktop/` (Tauri + React), `crates/redact-*`, `tests/corpus|i
 - [ ] T025 [P] Add shared `AppError` with stable `code` field in `crates/redact-domain/src/error.rs`
 - [ ] T026 [P] Add `redact-test-support` corpus helpers in `crates/redact-test-support/src/lib.rs`
 - [ ] T027 Implement session `Workspace` store (ephemeral; not restored on restart) in `crates/redact-domain/src/workspace.rs`
+- [ ] T107 [P] Implement `CapabilitiesSummary` / `EngineInfo` / `CapabilityEntry` types in `crates/redact-domain/src/capabilities.rs` per `specs/001-pdf-redaction-mvp/data-model.md` (FR-004a)
+- [ ] T108 Wire `get_capabilities` Tauri command returning build-scoped summary from registered adapters in `apps/desktop/src-tauri/src/commands/capabilities.rs` per `specs/001-pdf-redaction-mvp/contracts/tauri-commands.md`
 
-**Checkpoint**: Foundation ready — user stories can begin; PoC-1 and PoC-4 recorded as pass before US1 export path
+**Checkpoint**: Foundation ready — user stories can begin. **PoC-1 + PoC-4** (and PoC-3) must pass before US1 redact/verify adapters; **PoC-2/5/6** stay with US3/US4/US6 (see plan milestones). Capabilities domain/API available for UI (FR-004a).
 
 ---
 
 ## Phase 3: User Story 1 - Secure single-document redaction with review (Priority: P1) 🎯 MVP
 
-**Goal**: Import one PDF, detect with built-ins, review/approve/reject, export new file with sanitize+verify, never mark incomplete verification as verified, never modify original
+**Goal**: Import one PDF, detect with built-ins, review/approve/reject, export new file with sanitize+verify, never mark incomplete verification as verified, never modify original; warn on unsupported constructs without allowing `verified`
 
-**Independent Test**: Import text PDF with known sensitive strings → approve → export → source hash unchanged → targets not extractable → report status matches verification (quickstart Scenario A)
+**Independent Test**: Import text PDF with known sensitive strings → approve → export → source hash unchanged → targets not extractable → report status matches verification (quickstart Scenario A). Also: fixture with unsupported constructs → warn → export not `verified`.
 
 ### Tests for User Story 1
 
-- [ ] T028 [P] [US1] Write failing domain tests that incomplete/failed verification cannot yield `verified` in `crates/redact-domain/tests/verification_labeling.rs`
+- [ ] T028 [P] [US1] Write failing domain tests for verification labeling in `crates/redact-domain/tests/verification_labeling.rs`: incomplete/errored checks never `verified`; required image/vector check skip/incomplete ⇒ **`inconclusive` only** (FR-044/046); completed checks finding residue ⇒ **`failed`**; sanitize-target miss ⇒ not `verified` (FR-045)
 - [ ] T029 [P] [US1] Write failing immutability test (source SHA-256 unchanged after job) in `tests/integration/immutability_us1.rs`
 - [ ] T030 [P] [US1] Write failing contract tests for `import_documents`, `set_detection_review_state`, `export_documents`, `get_verification_report` in `tests/contracts/tauri_us1.rs`
+- [ ] T103 [P] [US1] Write failing tests that unsupported-construct docs warn and export outcome is never `verified` (only `failed`/`inconclusive`) in `crates/redact-domain/tests/unsupported_export_us1.rs` (FR-004, FR-034)
 
 ### Implementation for User Story 1
 
 - [ ] T031 [P] [US1] Implement `Document`, `Detection`, `ExportRecord`, `VerificationReport`, `CheckResult` models in `crates/redact-domain/src/entities.rs` per data-model field constraints
 - [ ] T032 [P] [US1] Implement pdf extract adapter (native text + quads → `CanonicalRect`) in `crates/redact-pdf/src/adapters/extract.rs`
 - [ ] T033 [US1] Implement selected redaction adapter (fail-closed) in `crates/redact-pdf/src/adapters/redact.rs` (depends on T021)
-- [ ] T034 [P] [US1] Implement sanitize adapter (metadata/JS/embedded policy toggles) in `crates/redact-pdf/src/adapters/sanitize.rs`
-- [ ] T035 [US1] Implement independent verifier (re-open export bytes; text residue checks) in `crates/redact-verify/src/engine.rs` (depends on T023)
+- [ ] T034 [P] [US1] Implement sanitize adapter for **FR-032 MVP defaults** (document info metadata fields; catalog XMP `/Metadata`; JavaScript/actions; embedded-file name trees) in `crates/redact-pdf/src/adapters/sanitize.rs` — sanitization failure must block `verified`
+- [ ] T035 [US1] Implement independent verifier in `crates/redact-verify/src/engine.rs` (depends on T023): text residue; **FR-045** sanitize-target assertions; image/vector residual checks when capable; map incomplete required image/vector checks → **`inconclusive`** and residue hits → **`failed`** (FR-044/046)
 - [ ] T036 [P] [US1] Implement MVP built-in detectors (PAN, Aadhaar, GSTIN, IFSC, bank, phone, email baseline) emitting confidence/source in `crates/redact-detect/src/builtins/`
-- [ ] T037 [US1] Implement analyze→detect pipeline orchestration in `crates/redact-domain/src/pipeline/analyze.rs`
-- [ ] T038 [US1] Implement export pipeline order redact→sanitize→write→verify with outcome aggregation (`fail`/`error` ⇒ not verified; required `skip` ⇒ `inconclusive`/`failed`) in `crates/redact-domain/src/pipeline/export.rs`
+- [ ] T037 [US1] Implement analyze→detect pipeline orchestration in `crates/redact-domain/src/pipeline/analyze.rs`, including capability-limit detection that sets per-doc warning flags for unsupported secure-redaction constructs (FR-004)
+- [ ] T038 [US1] Implement export pipeline order redact→sanitize→write→verify in `crates/redact-domain/src/pipeline/export.rs` with outcome aggregation: never `verified` on sanitize/verify failure; required image/vector skip/incomplete ⇒ `inconclusive`; residue/hard fail ⇒ `failed`; unsupported-construct exports allowed but never `verified` (FR-034)
 - [ ] T039 [US1] Implement Tauri commands `import_documents`, `analyze_document`, `get_detections`, `set_detection_review_state`, `mark_document_approved_for_export`, `export_documents`, `get_verification_report` in `apps/desktop/src-tauri/src/commands/documents.rs`
 - [ ] T040 [P] [US1] Build workspace import + status UI in `apps/desktop/src/features/workspace/`
 - [ ] T041 [P] [US1] Build PDF.js render-only viewer with proposal overlays (no mutation) in `apps/desktop/src/features/viewer/`
 - [ ] T042 [US1] Build review list (approve/reject, navigate to page/region) in `apps/desktop/src/features/review/` (depends on T041)
-- [ ] T043 [US1] Build export + verification report UI distinguishing verified|failed|inconclusive in `apps/desktop/src/features/export/`
+- [ ] T043 [US1] Build export + verification report UI distinguishing verified|failed|inconclusive and showing capability-warning / inconclusive reasons in `apps/desktop/src/features/export/`
 - [ ] T044 [US1] Enforce UI cannot set verification outcome (types omit writable outcome) in `apps/desktop/src/shared/types/ipc.ts`
-- [ ] T045 [US1] Add export path ≠ source guard and user confirmation for permanent export in `crates/redact-domain/src/gates.rs` and `apps/desktop/src/features/export/ExportDialog.tsx`
+- [ ] T045 [US1] Add export path ≠ source guard, **FR-028a** empty-approval block message, and user confirmation for permanent export in `crates/redact-domain/src/gates.rs` and `apps/desktop/src/features/export/ExportDialog.tsx`
 - [ ] T046 [US1] Generate synthetic `tests/corpus/text_pan_sample.pdf` via `crates/redact-test-support` and wire quickstart Scenario A automation in `tests/integration/quickstart_scenario_a.rs`
+- [ ] T104 [US1] Surface unsupported-construct capability warnings in workspace/review UI (banner or status detail) in `apps/desktop/src/features/workspace/CapabilityWarning.tsx` (FR-004)
+- [ ] T105 [P] [US1] Add sanitize default unit tests asserting FR-032 targets removed (or fail closed) in `crates/redact-pdf/tests/sanitize_defaults_fr032.rs`
+- [ ] T106 [P] [US1] Add verify outcome unit tests for image/vector incomplete ⇒ `inconclusive` vs residue ⇒ `failed` in `crates/redact-verify/tests/outcome_fr044_fr046.rs`
 
-**Checkpoint**: US1 MVP secure path works independently
+**Checkpoint**: US1 MVP secure path works independently; G1–G3 acceptance rules covered
 
 ---
 
@@ -246,7 +252,7 @@ Per plan.md: `apps/desktop/` (Tauri + React), `crates/redact-*`, `tests/corpus|i
 
 ## Phase 10: Polish & Cross-Cutting Concerns
 
-**Purpose**: Packaging, a11y, CI corpus, hardening across stories
+**Purpose**: Packaging, a11y, Capabilities UI, CI corpus, hardening across stories
 
 - [ ] T095 [P] Keyboard operability for approve/reject/export confirm in `apps/desktop/src/features/review/` and `apps/desktop/src/features/export/` (FR-057)
 - [ ] T096 [P] Non-color-only status labels and focus order pass in `apps/desktop/src/shared/ui/StatusBadge.tsx`
@@ -256,6 +262,10 @@ Per plan.md: `apps/desktop/` (Tauri + React), `crates/redact-*`, `tests/corpus|i
 - [ ] T100 Execute full quickstart scenarios A–G; record sign-off in `specs/001-pdf-redaction-mvp/quickstart-results.md`
 - [ ] T101 [P] Performance: confirm bounded workers + cancel under large batch in `crates/redact-domain/tests/batch_load.rs`
 - [ ] T102 Codeowners/docs note: PDF.js is render-only; redaction only via Rust engines in `docs/ARCHITECTURE.md`
+- [ ] T109 [P] Build About/Diagnostics **Capabilities** UI calling `get_capabilities` in `apps/desktop/src/features/diagnostics/CapabilitiesView.tsx` (FR-004a)
+- [ ] T110 [P] Write failing SC-013 acceptance test: Capabilities UI exposes engine/check versions and ≥1 limitation in `tests/integration/capabilities_sc013.rs`
+- [ ] T111 [P] Add non-goals guard checklist (no auth, cloud processing, collaboration, digital signatures, subscriptions) in `docs/NON_GOALS_CHECKLIST.md` and CI/doc reference (FR-061–065)
+- [ ] T112 [P] Add timed SC-001 manual/automated timing script (&lt;10 min secure path) and optional usability protocol stub for SC-007 in `specs/001-pdf-redaction-mvp/qa/sc001_timing.md` and `specs/001-pdf-redaction-mvp/qa/sc007_usability_protocol.md`
 
 ---
 
@@ -264,13 +274,14 @@ Per plan.md: `apps/desktop/` (Tauri + React), `crates/redact-*`, `tests/corpus|i
 ### Phase Dependencies
 
 - **Phase 1 Setup**: Start immediately
-- **Phase 2 Foundational**: After Setup — **blocks all stories**; includes PoC-1/3/4
-- **Phase 3 US1**: After Foundational — **MVP**
+- **Phase 2 Foundational**: After Setup — **blocks all stories**; includes **PoC-1/3/4 only** (not PoC-2/5/6); **FR-004a** Capabilities types + `get_capabilities` (T107–T108)
+- **Phase 3 US1**: After Foundational + PoC-1/4 — **MVP** (includes FR-032/044/046/004 unsupported path tasks T103–T106)
 - **Phase 4 US7**: After US1 (validates privacy on secure path)
-- **Phase 5 US3**: After Foundational; integrates with analyze used by US1 (PoC-2)
+- **Phase 5 US3**: After Foundational; includes **PoC-2** before OCR adapters
 - **Phase 6 US2**: After US1 (reuses export/review); can parallelize with US3 after US1 if staffed carefully
-- **Phase 7–9 (P2)**: After Foundational; ideally after US1 MVP validated
-- **Phase 10 Polish**: After target stories complete
+- **Phase 7 US4**: Includes **PoC-5** before unlock path
+- **Phase 8–9**: US5 rules; US6 includes **PoC-6** before page ops
+- **Phase 10 Polish**: After target stories complete — Capabilities UI/SC-013 (T109–T110); optional G4/G5 (T111–T112)
 
 ### User Story Dependencies
 
@@ -287,9 +298,10 @@ Per plan.md: `apps/desktop/` (Tauri + React), `crates/redact-*`, `tests/corpus|i
 ### Parallel Opportunities
 
 - Phase 1: T002–T007 marked [P]
-- Phase 2: trait definitions T013–T016, infra T017–T018, coords T019 in parallel after T008
+- Phase 2: trait definitions T013–T016, infra T017–T018, coords T019, Capabilities types T107 in parallel after T008; T108 after T107 + T024
 - After Foundational: US3 and US5 can proceed in parallel with different owners while US1 finishes UI
 - Within stories: [P] test tasks and parallel model/adapter tasks as marked
+- Phase 10: T109–T112 [P] after T108 exists
 
 ---
 
@@ -314,8 +326,8 @@ Task: T036 builtins/
 ### MVP First (User Story 1 Only)
 
 1. Complete Phase 1 Setup  
-2. Complete Phase 2 Foundational (**PoC-1 + PoC-4 required**)  
-3. Complete Phase 3 US1  
+2. Complete Phase 2 Foundational (**PoC-1 + PoC-3 + PoC-4 required**; do not wait for PoC-2/5/6)  
+3. Complete Phase 3 US1 (including T103–T106 sanitize/verify/unsupported rules)  
 4. **STOP and VALIDATE** quickstart Scenario A  
 5. Demo secure single-doc redaction  
 
@@ -328,7 +340,7 @@ Task: T036 builtins/
 5. US4 → encryption  
 6. US5 → rule packs  
 7. US6 → manual regions + page ops  
-8. Polish → package + a11y + CI  
+8. Polish → package + a11y + Capabilities UI (SC-013) + CI + optional G4/G5 (T111–T112)  
 
 ### Suggested MVP Scope
 

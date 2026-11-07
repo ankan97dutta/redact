@@ -103,6 +103,14 @@ Security rule: **No command accepts a client-supplied verification outcome.** On
 - **Input**: `{ job_id: string }`
 - **Effect**: cooperative cancel; no doc becomes `verified` due to cancel
 
+## Capabilities (FR-004a)
+
+### `get_capabilities`
+
+- **Input**: `{}`
+- **Output**: `CapabilitiesSummaryDto`
+- **Notes**: Read-only; assembled from registered engine adapters + verification check registry. MUST include version identifiers and at least one documented limitation. MUST remain consistent with per-document capability warnings and verification labeling (same source of truth as analyze/export gates).
+
 ## DTOs (illustrative)
 
 ```ts
@@ -111,6 +119,17 @@ type DocumentStatus =
   | "imported" | "needs_password" | "analyzing" | "ready_for_review"
   | "reviewing" | "approved_for_export" | "exporting"
   | "verified" | "failed" | "inconclusive" | "unsupported" | "cancelled";
+
+type CapabilityStatus = "supported" | "limited" | "unsupported";
+type CapabilitiesSummaryDto = {
+  schema_version: string;
+  app_version: string;
+  engines: { role: string; name: string; version: string }[];
+  document_classes: { id: string; status: CapabilityStatus; detail?: string }[];
+  verification_checks: { id: string; status: CapabilityStatus; detail?: string }[];
+  limitations: string[];
+  generated_at: string; // ISO-8601
+};
 ```
 
 OpenAPI-style JSON schemas for reports/rules live alongside this file.

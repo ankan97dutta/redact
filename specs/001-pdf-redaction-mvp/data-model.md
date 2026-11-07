@@ -183,12 +183,42 @@ Applied only to working copy before redact.
 
 Password material is **not** a durable entity. Held in process memory keyed by `document_id` until unlock completes or document removed.
 
+### CapabilitiesSummary (build-scoped, read-only; FR-004a)
+
+Versioned description of what this build’s engines and checks support. Must stay consistent with per-document capability warnings and verification labeling.
+
+| Field | Type | Notes |
+|-------|------|-------|
+| schema_version | string | Capabilities DTO schema semver |
+| app_version | string | Application version |
+| engines | EngineInfo[] | Redaction, extract, OCR, sanitize, verify adapters |
+| document_classes | CapabilityEntry[] | e.g. text_pdf, scanned_pdf, mixed, encrypted, forms, tables, images |
+| verification_checks | CapabilityEntry[] | e.g. text_residue, sanitize_targets, image_residual, vector_residual |
+| limitations | string[] | Human-readable known limits (honest, non-forensic) |
+| generated_at | datetime | When summary was assembled |
+
+### EngineInfo
+
+| Field | Type | Notes |
+|-------|------|-------|
+| role | `extract \| ocr \| redact \| sanitize \| verify` | |
+| name | string | Adapter/crate id |
+| version | string | Library or adapter version |
+
+### CapabilityEntry
+
+| Field | Type | Notes |
+|-------|------|-------|
+| id | string | Stable id |
+| status | `supported \| limited \| unsupported` | |
+| detail | string? | Why limited/unsupported |
+
 ## Export eligibility (domain gate)
 
 Document may enter `approved_for_export` / be included in export job iff:
 
 1. Status is `reviewing` or `ready_for_review` with explicit user “mark approved for export”
-2. At least one approved Detection or ManualRegion (empty set blocked per MVP assumption)
+2. At least one approved Detection or ManualRegion (empty set blocked per FR-028a)
 3. No unresolved `needs_password`
 4. Not `unsupported` / `failed` terminal without retry
 
@@ -202,4 +232,5 @@ Document 1──0..1 ExportRecord
 ExportRecord 1──1 VerificationReport
 RuleConfiguration 1──* CustomRule
 BatchJob *──* Document (by id)
+CapabilitiesSummary (singleton per build; not per workspace)
 ```

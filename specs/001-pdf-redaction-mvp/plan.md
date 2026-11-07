@@ -45,7 +45,7 @@ Build an open-source, single-user, offline desktop app for Windows and macOS tha
 | I. Privacy & security by design | Local-only pipeline; no document telemetry; honest capability claims |
 | II. Secure PDF processing | Permanent engine + sanitize + verify; fail-closed; PDF.js not used for redaction |
 | III. Original immutability | Working copies only; export path ≠ source; hash checks in tests |
-| IV. Modular engines | Traits: Extract/Ocr/Detect/Redact/Sanitize/Verify |
+| IV. Modular engines | Traits: Extract/Ocr/Detect/Redact/Sanitize/Verify; versioned **Capabilities** summary (FR-004a) exposed to UI |
 | V. UI / domain / infra split | React presentation; Rust domain crates; adapters in infra |
 | VI. Offline-first | No network required for core; packaging embeds WebView2 offline installer option |
 | VII. TDD | Domain gates and engine corpus tests first for security paths |
@@ -258,35 +258,45 @@ redact-test-support → fixtures
 
 ## Incremental implementation milestones
 
-| Milestone | Deliverable | Exit gate |
-|-----------|-------------|-----------|
-| **M0** | Repo scaffold (Tauri app + crates + CI skeleton) | App launches offline shell |
-| **M1** | PoC-1…PoC-6 complete; engine selection recorded | Research decisions finalized |
-| **M2** | Working-copy ingest, hash immutability, unlock | PoC-5; FR-001–005 subset |
-| **M3** | Extract + OCR + coords + viewer overlays | PoC-2, PoC-3 |
-| **M4** | Rule engine + built-ins + JSON config persist | FR-014–020, FR-055a |
-| **M5** | Review/approval UI + domain gates | FR-021–028; no export bypass |
-| **M6** | Redact + sanitize + verify + reports | PoC-4; FR-029–034, 043–049 |
-| **M7** | Batch, cancel, retry, export conflicts | FR-035–041a |
-| **M8** | Page reorder/rotate/delete | PoC-6; FR-042–042b |
-| **M9** | A11y pass + packaging Win/mac | FR-057–060; signed/notarized where keys exist |
-| **M10** | Hardening, corpus CI, docs, license inventory | Constitution VIII/X |
+Aligned with `tasks.md` PoC placement (not “all PoCs before any story”).
+
+| Milestone | Deliverable | Exit gate / PoC |
+|-----------|-------------|-----------------|
+| **M0** | Repo scaffold (Tauri app + crates + CI skeleton) | App launches offline shell (Phase 1) |
+| **M1** | Blocking PoCs for secure export path | **PoC-1**, **PoC-3**, **PoC-4** recorded; engine selected (Phase 2 T021–T023) |
+| **M2** | Working-copy ingest, hash immutability, domain gates | FR-001–003, FR-028a subset (Phase 2–3 foundation) |
+| **M3** | US1 secure single-doc redact/sanitize/verify + unsupported-construct labeling + Capabilities domain/API | PoC-1/4; FR-029–034, 032, 043–049, 004/004a |
+| **M4** | US7 offline/privacy validation | SC-005 |
+| **M5** | US3 OCR on scans/mixed | **PoC-2**; FR-013 |
+| **M6** | US2 batch, cancel, retry, export conflicts | FR-035–041a |
+| **M7** | US4 encrypted unlock | **PoC-5**; FR-056 |
+| **M8** | US5 rule config persist + JSON | FR-014–020, FR-055a |
+| **M9** | US6 viewer tools + page ops | **PoC-6**; FR-042–042b |
+| **M10** | A11y + packaging + Capabilities UI (SC-013) + corpus CI | FR-057–060, FR-004a/SC-013; constitution VIII/X |
 
 ---
 
-## Proof-of-concept checklist (before committing implementation)
+## Proof-of-concept checklist (gated by milestone, matching tasks)
 
-1. **PoC-1** Redaction engine bake-off (`pdf_oxide` vs `pdfrs` ± others)  
-2. **PoC-2** Local OCR quality + offline operation  
-3. **PoC-3** Coordinate round-trip render ↔ user space ↔ redact  
-4. **PoC-4** Independent verification catches residual extractable text  
-5. **PoC-5** Encrypted PDF unlock / wrong password  
-6. **PoC-6** Page ops on working copy; source unchanged  
+| PoC | When (tasks) | Blocks |
+|-----|--------------|--------|
+| **PoC-1** Redaction engine bake-off | Phase 2 / before US1 redact adapter (T021) | US1 production redaction (T033+) |
+| **PoC-3** Coordinate round-trip | Phase 2 (T022) | Viewer↔redact alignment |
+| **PoC-4** Independent verification | Phase 2 (T023) | US1 verify/export labeling (T035+) |
+| **PoC-2** Local OCR | US3 (T055) | Scan/mixed OCR path |
+| **PoC-5** Encrypted unlock | US4 (T074) | Password PDF flow |
+| **PoC-6** Page ops immutability | US6 (T089) | Page reorder/rotate/delete |
 
-Do **not** begin M6 production redaction path until PoC-1 and PoC-4 pass.
+Do **not** begin US1 production redaction/verify (M3) until **PoC-1** and **PoC-4** pass. Do **not** require PoC-2/5/6 before US1.
+
+---
+
+## Analyze remediation note (C1)
+
+**C1 (FR-004a Capabilities)**: Covered in data-model (`CapabilitiesSummary`), `contracts/tauri-commands.md` (`get_capabilities`), foundational tasks T107–T108, polish tasks T109–T110 (UI + SC-013). Optional G4/G5 polish: T111 (non-goals checklist), T112 (SC-001 timing + SC-007 usability stub).
 
 ---
 
 ## Next command
 
-`/speckit-tasks` to break milestones into dependency-ordered implementation tasks.
+Execute `/speckit-implement` against `tasks.md` (includes FR-004a Capabilities tasks).
