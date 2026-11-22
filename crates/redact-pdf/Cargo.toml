@@ -1,0 +1,18 @@
+[package]
+name = "redact-pdf"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "PDF extract, redact, sanitize engine traits and adapters"
+
+[dependencies]
+pdf_oxide = "0.3.78"
+redact-domain = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+redact-test-support = { workspace = true }
+
+[lints]
+workspace = true

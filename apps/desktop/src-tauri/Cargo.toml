@@ -1,0 +1,25 @@
+[package]
+name = "redact-desktop"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Redact Tauri desktop shell"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+serde = { workspace = true }
+serde_json = { workspace = true }
+redact-domain = { workspace = true }
+redact-detect = { workspace = true }
+redact-pdf = { workspace = true }
+redact-verify = { workspace = true }
+redact-test-support = { workspace = true }
+chrono = { workspace = true }
+uuid = { workspace = true }
+
+[lints]
+workspace = true

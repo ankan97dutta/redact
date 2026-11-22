@@ -1,0 +1,41 @@
+[workspace]
+resolver = "2"
+members = [
+  "crates/redact-domain",
+  "crates/redact-detect",
+  "crates/redact-pdf",
+  "crates/redact-ocr",
+  "crates/redact-verify",
+  "crates/redact-test-support",
+  "apps/desktop/src-tauri",
+  "tests/integration",
+  "tests/contracts",
+]
+
+[workspace.package]
+edition = "2021"
+license = "MIT OR Apache-2.0"
+version = "0.1.0"
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+sha2 = "0.10"
+hex = "0.4"
+redact-domain = { path = "crates/redact-domain" }
+redact-detect = { path = "crates/redact-detect" }
+redact-pdf = { path = "crates/redact-pdf" }
+redact-ocr = { path = "crates/redact-ocr" }
+redact-verify = { path = "crates/redact-verify" }
+redact-test-support = { path = "crates/redact-test-support" }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+dbg_macro = "warn"
+todo = "warn"
+unwrap_used = "warn"

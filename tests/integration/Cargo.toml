@@ -1,0 +1,20 @@
+[package]
+name = "redact-integration"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dev-dependencies]
+redact-domain = { workspace = true }
+redact-pdf = { workspace = true }
+redact-test-support = { workspace = true }
+redact-detect = { workspace = true }
+redact-verify = { workspace = true }
+
+[[test]]
+name = "immutability_us1"
+path = "immutability_us1.rs"
+
+[lints]
+workspace = true

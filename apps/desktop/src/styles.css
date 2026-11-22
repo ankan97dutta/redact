@@ -1,0 +1,106 @@
+:root {
+  color-scheme: light;
+  --ink: #1a1f16;
+  --paper: #f3efe6;
+  --accent: #2f5d50;
+  --muted: #5c6558;
+  --warn: #8a4b1f;
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 12% 18%, #fff8e8 0%, transparent 42%),
+    linear-gradient(160deg, #ebe4d6 0%, var(--paper) 45%, #e2ddd2 100%);
+  color: var(--ink);
+}
+
+.shell {
+  margin: 0 auto;
+  padding: 1.5rem;
+  max-width: 1200px;
+}
+
+.brand h1 {
+  font-size: clamp(2.2rem, 6vw, 3.4rem);
+  letter-spacing: -0.03em;
+  margin: 0 0 0.25rem;
+}
+
+.tagline,
+.caps-line,
+.hint,
+.viewer-note {
+  color: var(--muted);
+}
+
+.capability-banner {
+  margin: 0.75rem 0;
+  padding: 0.6rem 0.8rem;
+  border-left: 3px solid var(--warn);
+  color: var(--warn);
+}
+
+.grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 900px) {
+  .grid {
+    grid-template-columns: 280px 1fr 280px;
+  }
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.doc-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.doc {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  gap: 0.5rem;
+  text-align: left;
+}
+
+.doc.selected {
+  outline: 2px solid var(--accent);
+}
+
+.status {
+  color: var(--accent);
+  font-size: 0.85rem;
+}
+
+.warn {
+  color: var(--warn);
+  margin: 0.25rem 0;
+}
+
+.viewer {
+  min-height: 12rem;
+  border-top: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  padding-top: 0.75rem;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+}

@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/main.tsx","./src/vite-env.d.ts","./src/features/export/exportdialog.tsx","./src/features/review/reviewlist.tsx","./src/features/viewer/pdfviewer.tsx","./src/features/workspace/capabilitywarning.tsx","./src/features/workspace/workspacepanel.tsx","./src/shared/types/ipc.ts"],"version":"5.7.3"}

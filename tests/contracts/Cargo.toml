@@ -1,0 +1,17 @@
+[package]
+name = "redact-contracts"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dev-dependencies]
+redact-domain = { workspace = true }
+serde_json = { workspace = true }
+
+[[test]]
+name = "tauri_us1"
+path = "tauri_us1.rs"
+
+[lints]
+workspace = true

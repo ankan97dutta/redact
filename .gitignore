@@ -1,0 +1,43 @@
+# Rust
+target/
+debug/
+release/
+*.rs.bk
+*.rlib
+*.prof*
+
+# Node / frontend
+node_modules/
+dist/
+build/
+*.log
+.env
+.env.*
+!.env.example
+
+# Tauri / bundlers
+apps/desktop/src-tauri/target/
+apps/desktop/dist/
+*.app
+*.dmg
+*.AppImage
+*.msi
+*.exe
+
+# IDE / OS
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+.idea/
+.vscode/
+!.vscode/extensions.json
+
+# Test / coverage
+coverage/
+*.lcov
+.nyc_output/
+
+# Spec Kit / agent temp
+.git/COMMIT_MSG_SPECKIT.tmp
+*.bak

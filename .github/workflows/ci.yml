@@ -1,0 +1,40 @@
+name: ci
+
+on:
+  push:
+    branches: [main, "001-*"]
+  pull_request:
+
+jobs:
+  rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: cargo test (workspace crates)
+        run: cargo test -p redact-domain -p redact-detect -p redact-pdf -p redact-ocr -p redact-verify -p redact-test-support
+      - name: cargo fmt
+        run: cargo fmt --all -- --check
+      - name: cargo clippy
+        run: cargo clippy -p redact-domain -p redact-detect -p redact-pdf -p redact-ocr -p redact-verify -p redact-test-support -- -D warnings
+      - name: cargo audit placeholder
+        run: echo "TODO: enable cargo-audit once lockfile is committed"
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/desktop/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - name: npm audit placeholder
+        run: echo "TODO: fail CI on high severity after first lockfile"
